@@ -1,142 +1,139 @@
-#include <Servo.h>
+#include <NewPing.h>
 
-// Motor Pins
-const int LEFT_MOTOR_FORWARD = 5;
-const int LEFT_MOTOR_BACKWARD = 6;
-const int RIGHT_MOTOR_FORWARD = 10;
-const int RIGHT_MOTOR_BACKWARD = 11;
+// --- Motor Pins (L298N Driver) ---
+#define LEFT_MOTOR_FORWARD 7
+#define LEFT_MOTOR_BACKWARD 6
+#define RIGHT_MOTOR_FORWARD 5
+#define RIGHT_MOTOR_BACKWARD 4
 
-// Sensor and Actuator Pins
-const int TRIG_PIN = 7;
-const int ECHO_PIN = 8;
-const int LED_PIN = 13;
-const int BUZZER_PIN = 2;
-const int SHOVEL_SERVO_PIN = 9;
+// --- Ultrasonic Sensor ---
+#define TRIG_PIN A1
+#define ECHO_PIN A2
+#define MAX_DISTANCE 200
+NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
 
-// Constants
-const int MOTOR_SPEED = 255;
-const int OBSTACLE_DISTANCE_THRESHOLD = 50;
+// --- Buzzer ---
+#define BUZZER_PIN 3
 
-// Globals
-Servo shovelServo;
-long duration;
-int distance;
+// --- Shovel Motor Pins ---
+#define SHOVEL_PIN1 11
+#define SHOVEL_PIN2 12
+
+// --- Debris Detection Range ---
+#define DEBRIS_RANGE 20
 
 void setup() {
-  initializeMotors();
-  initializeSensors();
-  initializeServo();
+  setupMotors();
+  setupShovel();
+  pinMode(BUZZER_PIN, OUTPUT);
   Serial.begin(9600);
+
+  driveForward(); 
 }
 
 void loop() {
-  move(MOVE_FORWARD);
-
-  distance = getDistance();
+  int dist = measureDistance();
   Serial.print("Distance: ");
-  Serial.println(distance);
+  Serial.println(dist);
 
-  if (distance < OBSTACLE_DISTANCE_THRESHOLD) {
-    handleObstacle();
+  if (dist > 0 && dist <= DEBRIS_RANGE) {
+    buzz();
+    driveForward();
+    delay(1500);
+    halt();
+
+    lift();
+    delay(2000);
+    lower();
+    delay(2000);
+
+    driveForward();
+  } else {
+    driveForward();
   }
 
-  rotateBrushes();
-  operateShovel();
+  delay(200);
 }
 
-enum Direction {
-  MOVE_FORWARD,
-  MOVE_BACKWARD,
-  TURN_LEFT,
-  TURN_RIGHT,
-  STOP
-};
-
-void initializeMotors() {
+// --- Setup Functions ---
+void setupMotors() {
   pinMode(LEFT_MOTOR_FORWARD, OUTPUT);
   pinMode(LEFT_MOTOR_BACKWARD, OUTPUT);
   pinMode(RIGHT_MOTOR_FORWARD, OUTPUT);
   pinMode(RIGHT_MOTOR_BACKWARD, OUTPUT);
 }
 
-void initializeSensors() {
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
-  pinMode(LED_PIN, OUTPUT);
-  pinMode(BUZZER_PIN, OUTPUT);
+void setupShovel() {
+  pinMode(SHOVEL_PIN1, OUTPUT);
+  pinMode(SHOVEL_PIN2, OUTPUT);
 }
 
-void initializeServo() {
-  shovelServo.attach(SHOVEL_SERVO_PIN);
-  shovelServo.write(0);
+// --- Movement Functions ---
+void driveForward() {
+  digitalWrite(LEFT_MOTOR_FORWARD, HIGH);
+  digitalWrite(LEFT_MOTOR_BACKWARD, LOW);
+  digitalWrite(RIGHT_MOTOR_FORWARD, HIGH);
+  digitalWrite(RIGHT_MOTOR_BACKWARD, LOW);
 }
 
-void move(Direction dir) {
-  switch (dir) {
-    case MOVE_FORWARD:
-      analogWrite(LEFT_MOTOR_FORWARD, MOTOR_SPEED);
-      analogWrite(RIGHT_MOTOR_FORWARD, MOTOR_SPEED);
-      digitalWrite(LEFT_MOTOR_BACKWARD, LOW);
-      digitalWrite(RIGHT_MOTOR_BACKWARD, LOW);
-      break;
-    case MOVE_BACKWARD:
-      analogWrite(LEFT_MOTOR_BACKWARD, MOTOR_SPEED);
-      analogWrite(RIGHT_MOTOR_BACKWARD, MOTOR_SPEED);
-      digitalWrite(LEFT_MOTOR_FORWARD, LOW);
-      digitalWrite(RIGHT_MOTOR_FORWARD, LOW);
-      break;
-    case TURN_LEFT:
-      analogWrite(LEFT_MOTOR_BACKWARD, MOTOR_SPEED);
-      analogWrite(RIGHT_MOTOR_FORWARD, MOTOR_SPEED);
-      digitalWrite(LEFT_MOTOR_FORWARD, LOW);
-      digitalWrite(RIGHT_MOTOR_BACKWARD, LOW);
-      break;
-    case TURN_RIGHT:
-      analogWrite(LEFT_MOTOR_FORWARD, MOTOR_SPEED);
-      analogWrite(RIGHT_MOTOR_BACKWARD, MOTOR_SPEED);
-      digitalWrite(LEFT_MOTOR_BACKWARD, LOW);
-      digitalWrite(RIGHT_MOTOR_FORWARD, LOW);
-      break;
-    case STOP:
-      digitalWrite(LEFT_MOTOR_FORWARD, LOW);
-      digitalWrite(LEFT_MOTOR_BACKWARD, LOW);
-      digitalWrite(RIGHT_MOTOR_FORWARD, LOW);
-      digitalWrite(RIGHT_MOTOR_BACKWARD, LOW);
-      break;
-  }
-}
-
-long getDistance() {
-  digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(2);
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_PIN, LOW);
-
-  duration = pulseIn(ECHO_PIN, HIGH);
-  return duration * 0.034 / 2;
-}
-
-void handleObstacle() {
-  digitalWrite(LED_PIN, HIGH);
-  tone(BUZZER_PIN, 1000, 500);
-
-  move(STOP);
-  delay(2000);
-  move(MOVE_BACKWARD);
-  delay(1000);
-}
-
-void rotateBrushes() {
-  analogWrite(LEFT_MOTOR_BACKWARD, MOTOR_SPEED);
-  analogWrite(RIGHT_MOTOR_BACKWARD, MOTOR_SPEED);
+void driveBackward() {
   digitalWrite(LEFT_MOTOR_FORWARD, LOW);
+  digitalWrite(LEFT_MOTOR_BACKWARD, HIGH);
   digitalWrite(RIGHT_MOTOR_FORWARD, LOW);
+  digitalWrite(RIGHT_MOTOR_BACKWARD, HIGH);
 }
 
-void operateShovel() {
-  shovelServo.write(90);
-  delay(2000);
-  shovelServo.write(0);
-  delay(2000);
+void rotateLeft() {
+  digitalWrite(LEFT_MOTOR_FORWARD, LOW);
+  digitalWrite(LEFT_MOTOR_BACKWARD, HIGH);
+  digitalWrite(RIGHT_MOTOR_FORWARD, HIGH);
+  digitalWrite(RIGHT_MOTOR_BACKWARD, LOW);
+}
+
+void rotateRight() {
+  digitalWrite(LEFT_MOTOR_FORWARD, HIGH);
+  digitalWrite(LEFT_MOTOR_BACKWARD, LOW);
+  digitalWrite(RIGHT_MOTOR_FORWARD, LOW);
+  digitalWrite(RIGHT_MOTOR_BACKWARD, HIGH);
+}
+
+void halt() {
+  digitalWrite(LEFT_MOTOR_FORWARD, LOW);
+  digitalWrite(LEFT_MOTOR_BACKWARD, LOW);
+  digitalWrite(RIGHT_MOTOR_FORWARD, LOW);
+  digitalWrite(RIGHT_MOTOR_BACKWARD, LOW);
+}
+
+// --- Shovel Functions ---
+void lift() {
+  digitalWrite(SHOVEL_PIN1, HIGH);
+  digitalWrite(SHOVEL_PIN2, LOW);
+  delay(800);
+  stopShovel();
+}
+
+void lower() {
+  digitalWrite(SHOVEL_PIN1, LOW);
+  digitalWrite(SHOVEL_PIN2, HIGH);
+  delay(800);
+  stopShovel();
+}
+
+void stopShovel() {
+  digitalWrite(SHOVEL_PIN1, LOW);
+  digitalWrite(SHOVEL_PIN2, LOW);
+}
+
+// --- Buzzer ---
+void buzz() {
+  digitalWrite(BUZZER_PIN, HIGH);
+  delay(300);
+  digitalWrite(BUZZER_PIN, LOW);
+}
+
+// --- Ultrasonic ---
+int measureDistance() {
+  delay(70);
+  int cm = sonar.ping_cm();
+  return (cm == 0) ? 250 : cm;
 }
