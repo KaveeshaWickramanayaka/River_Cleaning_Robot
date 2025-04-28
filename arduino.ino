@@ -1,25 +1,25 @@
 #include <NewPing.h>
 
-// --- Motor Pins (L298N Driver) ---
+//Motor Pins (L298N)
 #define LEFT_MOTOR_FORWARD 7
 #define LEFT_MOTOR_BACKWARD 6
 #define RIGHT_MOTOR_FORWARD 5
 #define RIGHT_MOTOR_BACKWARD 4
 
-// --- Ultrasonic Sensor ---
+// Ultrasonic Sensor 
 #define TRIG_PIN A1
 #define ECHO_PIN A2
 #define MAX_DISTANCE 200
 NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
 
-// --- Buzzer ---
+//Buzzer
 #define BUZZER_PIN 3
 
-// --- Shovel Motor Pins ---
+//Shovel Motor 
 #define SHOVEL_PIN1 11
 #define SHOVEL_PIN2 12
 
-// --- Debris Detection Range ---
+//Debris Detection Range
 #define DEBRIS_RANGE 20
 
 void setup() {
@@ -55,7 +55,7 @@ void loop() {
   delay(200);
 }
 
-// --- Setup Functions ---
+// Setup Functions
 void setupMotors() {
   pinMode(LEFT_MOTOR_FORWARD, OUTPUT);
   pinMode(LEFT_MOTOR_BACKWARD, OUTPUT);
@@ -68,7 +68,7 @@ void setupShovel() {
   pinMode(SHOVEL_PIN2, OUTPUT);
 }
 
-// --- Movement Functions ---
+// Movement Functions 
 void driveForward() {
   digitalWrite(LEFT_MOTOR_FORWARD, HIGH);
   digitalWrite(LEFT_MOTOR_BACKWARD, LOW);
@@ -104,7 +104,7 @@ void halt() {
   digitalWrite(RIGHT_MOTOR_BACKWARD, LOW);
 }
 
-// --- Shovel Functions ---
+// Shovel lift logic
 void lift() {
   digitalWrite(SHOVEL_PIN1, HIGH);
   digitalWrite(SHOVEL_PIN2, LOW);
@@ -124,14 +124,14 @@ void stopShovel() {
   digitalWrite(SHOVEL_PIN2, LOW);
 }
 
-// --- Buzzer ---
+// Buzzer logic
 void buzz() {
   digitalWrite(BUZZER_PIN, HIGH);
   delay(300);
   digitalWrite(BUZZER_PIN, LOW);
 }
 
-// --- Ultrasonic ---
+// Ultrasonic logic
 int measureDistance() {
   delay(70);
   int cm = sonar.ping_cm();
